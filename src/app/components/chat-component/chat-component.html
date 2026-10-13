@@ -7,49 +7,49 @@
         <p class="chat__subtitle">Votre assistant de conversation</p>
       </div>
     </div>
-    <span class="chat__status">
-      <span class="chat__status-indicator" aria-hidden="true"></span>
-      Prêt à vous aider
+    <span class="chat__status" [attr.aria-live]="'polite'">
+      <span class="chat__status-indicator" [class.chat__status-indicator--loading]="isLoading()" aria-hidden="true"></span>
+      {{ isLoading() ? 'Réponse en cours…' : 'Prêt à vous aider' }}
     </span>
   </header>
 
   <section class="chat__conversation" aria-label="Conversation">
     <p class="chat__welcome">Bonjour ! Comment puis-je vous aider aujourd’hui ?</p>
 
-    <article class="message message--user">
-      <div class="chat__avatar chat__avatar--user" aria-hidden="true">V</div>
-      <div class="message__content">
-        <p class="message__author">Vous</p>
-        <p class="message__bubble">Peux-tu me donner des conseils pour mieux organiser ma journée ?</p>
-      </div>
-    </article>
-
-    <article class="message message--assistant">
-      <div class="chat__avatar chat__avatar--assistant" aria-hidden="true">IA</div>
-      <div class="message__content">
-        <p class="message__author">Assistant IA</p>
-        <div class="message__bubble">
-          <p>Bien sûr ! Voici quelques pistes pour structurer votre journée :</p>
-          <ul>
-            <li>Choisissez vos trois priorités avant de commencer.</li>
-            <li>Réservez des plages de temps dédiées à chaque tâche.</li>
-            <li>Prévoyez de courtes pauses pour rester concentré.</li>
-          </ul>
-          <p>Y a-t-il un aspect de votre organisation que vous aimeriez améliorer en particulier ?</p>
+    @for (message of messages(); track $index) {
+      <article class="message" [class.message--user]="message.role === 'User'" [class.message--assistant]="message.role === 'Assistant'">
+        <div
+          class="chat__avatar"
+          [class.chat__avatar--user]="message.role === 'User'"
+          [class.chat__avatar--assistant]="message.role === 'Assistant'"
+          aria-hidden="true"
+        >{{ message.role === 'User' ? 'V' : 'IA' }}</div>
+        <div class="message__content">
+          <p class="message__author">{{ message.role === 'User' ? 'Vous' : 'Assistant IA' }}</p>
+          <p class="message__bubble">{{ message.content }}</p>
         </div>
-      </div>
-    </article>
+      </article>
+    }
+
+    @if (isLoading()) {
+      <p class="chat__feedback" role="status">L’assistant prépare une réponse…</p>
+    }
+    @if (errorMessage(); as error) {
+      <p class="chat__error" role="alert">{{ error }}</p>
+    }
   </section>
 
-  <form class="chat__composer" aria-label="Envoyer un message">
+  <form class="chat__composer" aria-label="Envoyer un message" (ngSubmit)="submitMessage()">
     <label class="visually-hidden" for="message">Votre message</label>
     <textarea
       id="message"
       name="message"
       rows="1"
       placeholder="Écrivez votre message..."
+      [(ngModel)]="draft"
+      [disabled]="isLoading()"
     ></textarea>
-    <button type="button" disabled aria-label="Envoyer le message (bientôt disponible)">
+    <button type="submit" [disabled]="!draft.trim() || isLoading()" aria-label="Envoyer le message">
       <svg
         aria-hidden="true"
         width="20"
@@ -68,5 +68,5 @@
       </svg>
     </button>
   </form>
-  <p class="chat__disclaimer">L’envoi des messages sera bientôt disponible.</p>
+  <p class="chat__disclaimer">Appuyez sur le bouton pour envoyer votre message.</p>
 </main>
