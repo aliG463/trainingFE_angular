@@ -84,6 +84,10 @@
   background: #12a76a;
 }
 
+.chat__status-indicator--loading {
+  background: #f79009;
+}
+
 .chat__conversation {
   display: flex;
   flex: 1;
@@ -98,6 +102,21 @@
   color: #667085;
   font-size: 0.875rem;
   text-align: center;
+}
+
+.chat__feedback,
+.chat__error {
+  align-self: center;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.chat__feedback {
+  color: #667085;
+}
+
+.chat__error {
+  color: #b42318;
 }
 
 .message {
