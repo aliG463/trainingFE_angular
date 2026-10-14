@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import {
+  afterRenderEffect,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
@@ -11,6 +18,17 @@ interface ChatMessage {
 
 interface ChatResponse {
   answer: string;
+}
+
+interface MessageSegment {
+  text: string;
+  bold: boolean;
+}
+
+interface MessageLine {
+  segments: MessageSegment[];
+  isTitle: boolean;
+  isBlank: boolean;
 }
 
 @Component({
@@ -26,9 +44,64 @@ export class ChatComponent {
   readonly messages = signal<ChatMessage[]>([]);
   readonly isLoading = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  private readonly latestMessage = viewChild<ElementRef<HTMLElement>>('latestMessage');
   draft = '';
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {
+    afterRenderEffect(() => {
+      this.messages();
+      this.latestMessage()?.nativeElement.scrollIntoView?.({
+        behavior: 'smooth',
+        block: 'end',
+      });
+    });
+  }
+
+  formatMessage(content: string): MessageLine[] {
+    return content
+      .replace(/\\r\\n|\\n/g, '\n')
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .map((line) => {
+        const titleMatch = line.trim().match(/^\*\*(.+)\*\*$/);
+        const text = titleMatch ? titleMatch[1] : line;
+        const segments: MessageSegment[] = [];
+        if (titleMatch) {
+          segments.push({ text, bold: true });
+        } else {
+          const boldPattern = /\*\*(.+?)\*\*/g;
+          let lastIndex = 0;
+
+          for (const match of text.matchAll(boldPattern)) {
+            const matchIndex = match.index;
+            if (matchIndex > lastIndex) {
+              segments.push({ text: text.slice(lastIndex, matchIndex), bold: false });
+            }
+            segments.push({ text: match[1], bold: true });
+            lastIndex = matchIndex + match[0].length;
+          }
+
+          if (lastIndex < text.length || segments.length === 0) {
+            segments.push({ text: text.slice(lastIndex), bold: false });
+          }
+        }
+
+        return {
+          segments,
+          isTitle: titleMatch !== null,
+          isBlank: line.trim().length === 0,
+        };
+      });
+  }
+
+  handleEnter(event: Event): void {
+    if (event instanceof KeyboardEvent && event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    this.submitMessage();
+  }
 
   submitMessage(): void {
     const question = this.draft.trim();

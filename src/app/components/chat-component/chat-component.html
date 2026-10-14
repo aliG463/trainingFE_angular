@@ -26,7 +26,23 @@
         >{{ message.role === 'User' ? 'V' : 'IA' }}</div>
         <div class="message__content">
           <p class="message__author">{{ message.role === 'User' ? 'Vous' : 'Assistant IA' }}</p>
-          <p class="message__bubble">{{ message.content }}</p>
+          <div class="message__bubble">
+            @for (line of formatMessage(message.content); track $index) {
+              @if (line.isBlank) {
+                <div class="message__line-break" aria-hidden="true"></div>
+              } @else {
+                <p class="message__line" [class.message__line--title]="line.isTitle">
+                  @for (segment of line.segments; track $index) {
+                    @if (segment.bold) {
+                      <strong>{{ segment.text }}</strong>
+                    } @else {
+                      {{ segment.text }}
+                    }
+                  }
+                </p>
+              }
+            }
+          </div>
         </div>
       </article>
     }
@@ -37,10 +53,21 @@
     @if (errorMessage(); as error) {
       <p class="chat__error" role="alert">{{ error }}</p>
     }
+    <div class="chat__conversation-end" #latestMessage aria-hidden="true"></div>
   </section>
 
   <form class="chat__composer" aria-label="Envoyer un message" (ngSubmit)="submitMessage()">
     <label class="visually-hidden" for="message">Votre message</label>
+    <button
+      class="chat__composer-button chat__composer-button--utility"
+      type="button"
+      aria-label="Ajouter des fichiers ou des images (bientôt disponible)"
+      title="Ajouter des fichiers ou des images"
+    >
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
     <textarea
       id="message"
       name="message"
@@ -48,8 +75,25 @@
       placeholder="Écrivez votre message..."
       [(ngModel)]="draft"
       [disabled]="isLoading()"
+      (keydown.enter)="handleEnter($event)"
     ></textarea>
-    <button type="submit" [disabled]="!draft.trim() || isLoading()" aria-label="Envoyer le message">
+    <button
+      class="chat__composer-button chat__composer-button--utility"
+      type="button"
+      aria-label="Envoyer un audio (bientôt disponible)"
+      title="Envoyer un audio"
+    >
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="2" />
+        <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </button>
+    <button
+      class="chat__composer-button chat__composer-button--send"
+      type="submit"
+      [disabled]="!draft.trim() || isLoading()"
+      aria-label="Envoyer le message"
+    >
       <svg
         aria-hidden="true"
         width="20"
@@ -68,5 +112,5 @@
       </svg>
     </button>
   </form>
-  <p class="chat__disclaimer">Appuyez sur le bouton pour envoyer votre message.</p>
+  <p class="chat__disclaimer">Entrée pour envoyer · Maj+Entrée pour passer à la ligne.</p>
 </main>
