@@ -10,9 +10,11 @@
   display: flex;
   flex-direction: column;
   width: min(100%, 920px);
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   margin-inline: auto;
   padding: 0 2rem 1.5rem;
+  overflow: hidden;
   background: #fff;
 }
 
@@ -93,7 +95,14 @@
   flex: 1;
   flex-direction: column;
   gap: 1.5rem;
+  min-height: 0;
   padding-block: 2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.chat__conversation-end {
+  min-height: 1px;
 }
 
 .chat__welcome {
@@ -155,18 +164,17 @@
   background: #3457d5;
 }
 
-.message__bubble p {
+.message__line {
   margin: 0;
 }
 
-.message__bubble p + ul,
-.message__bubble ul + p {
-  margin-top: 0.75rem;
+.message__line--title {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
-.message__bubble ul {
-  margin-bottom: 0;
-  padding-left: 1.25rem;
+.message__line-break {
+  min-height: 0.5rem;
 }
 
 .chat__composer {
@@ -199,7 +207,7 @@
   color: #667085;
 }
 
-.chat__composer button {
+.chat__composer-button {
   display: grid;
   flex: 0 0 2.5rem;
   width: 2.5rem;
@@ -207,11 +215,19 @@
   place-items: center;
   border: 0;
   border-radius: 0.75rem;
+}
+
+.chat__composer-button--utility {
+  color: #475467;
+  background: transparent;
+}
+
+.chat__composer-button--send {
   color: #fff;
   background: #3457d5;
 }
 
-.chat__composer button:disabled {
+.chat__composer-button--send:disabled {
   cursor: not-allowed;
   color: #667085;
   background: #eaecf0;

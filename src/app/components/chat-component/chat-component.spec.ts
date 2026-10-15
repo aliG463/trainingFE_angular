@@ -66,6 +66,65 @@ describe('ChatComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Voici un exemple.');
   });
 
+  it('should format bold titles and preserve answer line breaks', () => {
+    component.messages.set([
+      {
+        role: 'Assistant',
+        content: '**Résumé**\\nUne réponse claire.\\n\\nDétail **important**.',
+      },
+    ]);
+    fixture.detectChanges();
+
+    const bubble = (fixture.nativeElement as HTMLElement).querySelector('.message__bubble');
+    expect(bubble?.querySelector('.message__line--title strong')?.textContent).toBe('Résumé');
+    expect(bubble?.querySelectorAll('.message__line')).toHaveLength(3);
+    expect(bubble?.querySelector('.message__line-break')).toBeTruthy();
+    expect(bubble?.querySelector('.message__line:last-child strong')?.textContent).toBe('important');
+    expect(bubble?.textContent).not.toContain('**');
+  });
+
+  it('should send the message when Enter is pressed in the composer', () => {
+    const textarea = (fixture.nativeElement as HTMLElement).querySelector('textarea');
+    expect(textarea).toBeTruthy();
+
+    component.draft = 'Bonjour';
+    fixture.detectChanges();
+    textarea?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+    const request = httpTestingController.expectOne('https://localhost:7294/api/ChatBot/chat');
+    expect(request.request.body.question).toBe('Bonjour');
+    request.flush({ answer: 'Bonjour !' });
+  });
+
+  it('should scroll the latest message into view when the conversation changes', async () => {
+    const marker = (fixture.nativeElement as HTMLElement).querySelector('.chat__conversation-end');
+    expect(marker).toBeTruthy();
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(marker, 'scrollIntoView', { value: scrollIntoView });
+
+    component.messages.set([{ role: 'User', content: 'Bonjour' }]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'end' });
+  });
+
+  it('should keep the newline behavior when Shift+Enter is pressed', () => {
+    const textarea = (fixture.nativeElement as HTMLElement).querySelector('textarea');
+    expect(textarea).toBeTruthy();
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    textarea?.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    httpTestingController.expectNone('https://localhost:7294/api/ChatBot/chat');
+  });
+
   it('should display an error when the API request fails', () => {
     component.draft = 'Bonjour';
     component.submitMessage();
