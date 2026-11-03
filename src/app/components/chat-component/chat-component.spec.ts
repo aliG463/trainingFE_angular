@@ -10,6 +10,8 @@ describe('ChatComponent', () => {
   let httpTestingController: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.removeItem('training-fe-angular.conversations');
+
     await TestBed.configureTestingModule({
       imports: [ChatComponent],
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -33,10 +35,55 @@ describe('ChatComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
 
     expect(element.querySelector('h1')?.textContent).toContain('Assistant IA');
+    expect(element.querySelector('.chat-sidebar__title')?.textContent).toContain('Conversations');
     expect(element.querySelector('[aria-label="Conversation"]')).toBeTruthy();
     expect(element.querySelector('label[for="message"]')?.textContent).toContain('Votre message');
     expect(element.querySelector('button[disabled]')).toBeTruthy();
     expect(element.querySelectorAll('.message')).toHaveLength(0);
+  });
+
+  it('should save conversations and restore them from the sidebar', async () => {
+    component.draft = 'Comment fonctionne Angular ?';
+    component.submitMessage();
+
+    const request = httpTestingController.expectOne('https://localhost:7294/api/ChatBot/chat');
+    request.flush({ answer: 'Angular est un framework.' });
+    fixture.detectChanges();
+
+    expect(component.conversations()).toHaveLength(1);
+    expect(component.conversations()[0].title).toBe('Comment fonctionne Angular ?');
+    expect(JSON.parse(localStorage.getItem('training-fe-angular.conversations') ?? '[]')).toHaveLength(1);
+
+    fixture.destroy();
+    fixture = TestBed.createComponent(ChatComponent);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+    expect(component.conversations()).toHaveLength(1);
+
+    component.startNewConversation();
+    fixture.detectChanges();
+    expect(component.messages()).toHaveLength(0);
+
+    const savedConversation = component.conversations()[0];
+    component.selectConversation(savedConversation);
+    fixture.detectChanges();
+    expect(component.messages()).toEqual(savedConversation.messages);
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Angular est un framework.');
+  });
+
+  it('should open and reduce the conversation sidebar', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const toggleButton = element.querySelector('.chat__sidebar-toggle') as HTMLButtonElement;
+
+    toggleButton.click();
+    fixture.detectChanges();
+    expect(element.querySelector('.chat-sidebar')).toBeNull();
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('false');
+
+    toggleButton.click();
+    fixture.detectChanges();
+    expect(element.querySelector('.chat-sidebar')).toBeTruthy();
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('should post the question and conversation history and display the answer', () => {
