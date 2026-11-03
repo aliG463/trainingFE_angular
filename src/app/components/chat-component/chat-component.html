@@ -1,116 +1,162 @@
-<main class="chat">
-  <header class="chat__header">
-    <div class="chat__identity">
-      <div class="chat__avatar chat__avatar--assistant" aria-hidden="true">IA</div>
-      <div>
-        <h1 class="chat__title">Assistant IA</h1>
-        <p class="chat__subtitle">Votre assistant de conversation</p>
+<div class="chat-layout">
+  @if (isSidebarOpen()) {
+    <aside class="chat-sidebar" id="conversation-sidebar" aria-label="Anciennes conversations">
+      <div class="chat-sidebar__header">
+        <h2 class="chat-sidebar__title">Conversations</h2>
+        <button
+          class="chat-sidebar__new"
+          type="button"
+          [disabled]="isLoading()"
+          (click)="startNewConversation()"
+        >Nouvelle conversation</button>
       </div>
-    </div>
-    <span class="chat__status" [attr.aria-live]="'polite'">
-      <span class="chat__status-indicator" [class.chat__status-indicator--loading]="isLoading()" aria-hidden="true"></span>
-      {{ isLoading() ? 'Réponse en cours…' : 'Prêt à vous aider' }}
-    </span>
-  </header>
 
-  <section class="chat__conversation" aria-label="Conversation">
-    <p class="chat__welcome">Bonjour ! Comment puis-je vous aider aujourd’hui ?</p>
+      @if (conversations().length > 0) {
+        <nav class="chat-sidebar__list" aria-label="Historique">
+          @for (conversation of conversations(); track conversation.id) {
+            <button
+              class="chat-sidebar__conversation"
+              type="button"
+              [class.chat-sidebar__conversation--active]="activeConversationId() === conversation.id"
+              [attr.aria-pressed]="activeConversationId() === conversation.id"
+              [disabled]="isLoading()"
+              (click)="selectConversation(conversation)"
+            >{{ conversation.title }}</button>
+          }
+        </nav>
+      } @else {
+        <p class="chat-sidebar__empty">Vos anciennes conversations apparaîtront ici.</p>
+      }
+    </aside>
+  }
 
-    @for (message of messages(); track $index) {
-      <article class="message" [class.message--user]="message.role === 'User'" [class.message--assistant]="message.role === 'Assistant'">
-        <div
-          class="chat__avatar"
-          [class.chat__avatar--user]="message.role === 'User'"
-          [class.chat__avatar--assistant]="message.role === 'Assistant'"
-          aria-hidden="true"
-        >{{ message.role === 'User' ? 'V' : 'IA' }}</div>
-        <div class="message__content">
-          <p class="message__author">{{ message.role === 'User' ? 'Vous' : 'Assistant IA' }}</p>
-          <div class="message__bubble">
-            @for (line of formatMessage(message.content); track $index) {
-              @if (line.isBlank) {
-                <div class="message__line-break" aria-hidden="true"></div>
-              } @else {
-                <p class="message__line" [class.message__line--title]="line.isTitle">
-                  @for (segment of line.segments; track $index) {
-                    @if (segment.bold) {
-                      <strong>{{ segment.text }}</strong>
-                    } @else {
-                      {{ segment.text }}
-                    }
-                  }
-                </p>
-              }
-            }
-          </div>
+  <main class="chat">
+    <header class="chat__header">
+      <div class="chat__identity">
+        <button
+          class="chat__sidebar-toggle"
+          type="button"
+          [attr.aria-expanded]="isSidebarOpen()"
+          [attr.aria-label]="isSidebarOpen() ? 'Réduire le volet des conversations' : 'Ouvrir le volet des conversations'"
+          [title]="isSidebarOpen() ? 'Réduire le volet des conversations' : 'Ouvrir le volet des conversations'"
+          (click)="toggleSidebar()"
+        >
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2" />
+            <path d="M9 4v16" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </button>
+        <div class="chat__avatar chat__avatar--assistant" aria-hidden="true">IA</div>
+        <div>
+          <h1 class="chat__title">Assistant IA</h1>
+          <p class="chat__subtitle">Votre assistant de conversation</p>
         </div>
-      </article>
-    }
+      </div>
+      <span class="chat__status" [attr.aria-live]="'polite'">
+        <span class="chat__status-indicator" [class.chat__status-indicator--loading]="isLoading()" aria-hidden="true"></span>
+        {{ isLoading() ? 'Réponse en cours…' : 'Prêt à vous aider' }}
+      </span>
+    </header>
 
-    @if (isLoading()) {
-      <p class="chat__feedback" role="status">L’assistant prépare une réponse…</p>
-    }
-    @if (errorMessage(); as error) {
-      <p class="chat__error" role="alert">{{ error }}</p>
-    }
-    <div class="chat__conversation-end" #latestMessage aria-hidden="true"></div>
-  </section>
+    <section class="chat__conversation" aria-label="Conversation">
+      <p class="chat__welcome">Bonjour ! Comment puis-je vous aider aujourd’hui ?</p>
 
-  <form class="chat__composer" aria-label="Envoyer un message" (ngSubmit)="submitMessage()">
-    <label class="visually-hidden" for="message">Votre message</label>
-    <button
-      class="chat__composer-button chat__composer-button--utility"
-      type="button"
-      aria-label="Ajouter des fichiers ou des images (bientôt disponible)"
-      title="Ajouter des fichiers ou des images"
-    >
-      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-      </svg>
-    </button>
-    <textarea
-      id="message"
-      name="message"
-      rows="1"
-      placeholder="Écrivez votre message..."
-      [(ngModel)]="draft"
-      [disabled]="isLoading()"
-      (keydown.enter)="handleEnter($event)"
-    ></textarea>
-    <button
-      class="chat__composer-button chat__composer-button--utility"
-      type="button"
-      aria-label="Envoyer un audio (bientôt disponible)"
-      title="Envoyer un audio"
-    >
-      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="2" />
-        <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-      </svg>
-    </button>
-    <button
-      class="chat__composer-button chat__composer-button--send"
-      type="submit"
-      [disabled]="!draft.trim() || isLoading()"
-      aria-label="Envoyer le message"
-    >
-      <svg
-        aria-hidden="true"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
+      @for (message of messages(); track $index) {
+        <article class="message" [class.message--user]="message.role === 'User'" [class.message--assistant]="message.role === 'Assistant'">
+          <div
+            class="chat__avatar"
+            [class.chat__avatar--user]="message.role === 'User'"
+            [class.chat__avatar--assistant]="message.role === 'Assistant'"
+            aria-hidden="true"
+          >{{ message.role === 'User' ? 'V' : 'IA' }}</div>
+          <div class="message__content">
+            <p class="message__author">{{ message.role === 'User' ? 'Vous' : 'Assistant IA' }}</p>
+            <div class="message__bubble">
+              @for (line of formatMessage(message.content); track $index) {
+                @if (line.isBlank) {
+                  <div class="message__line-break" aria-hidden="true"></div>
+                } @else {
+                  <p class="message__line" [class.message__line--title]="line.isTitle">
+                    @for (segment of line.segments; track $index) {
+                      @if (segment.bold) {
+                        <strong>{{ segment.text }}</strong>
+                      } @else {
+                        {{ segment.text }}
+                      }
+                    }
+                  </p>
+                }
+              }
+            </div>
+          </div>
+        </article>
+      }
+
+      @if (isLoading()) {
+        <p class="chat__feedback" role="status">L’assistant prépare une réponse…</p>
+      }
+      @if (errorMessage(); as error) {
+        <p class="chat__error" role="alert">{{ error }}</p>
+      }
+      <div class="chat__conversation-end" #latestMessage aria-hidden="true"></div>
+    </section>
+
+    <form class="chat__composer" aria-label="Envoyer un message" (ngSubmit)="submitMessage()">
+      <label class="visually-hidden" for="message">Votre message</label>
+      <button
+        class="chat__composer-button chat__composer-button--utility"
+        type="button"
+        aria-label="Ajouter des fichiers ou des images (bientôt disponible)"
+        title="Ajouter des fichiers ou des images"
       >
-        <path
-          d="M22 2 15 22l-4-9-9-4L22 2Zm0 0L11 13"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </button>
-  </form>
-  <p class="chat__disclaimer">Entrée pour envoyer · Maj+Entrée pour passer à la ligne.</p>
-</main>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+      <textarea
+        id="message"
+        name="message"
+        rows="1"
+        placeholder="Écrivez votre message..."
+        [(ngModel)]="draft"
+        [disabled]="isLoading()"
+        (keydown.enter)="handleEnter($event)"
+      ></textarea>
+      <button
+        class="chat__composer-button chat__composer-button--utility"
+        type="button"
+        aria-label="Envoyer un audio (bientôt disponible)"
+        title="Envoyer un audio"
+      >
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" stroke-width="2" />
+          <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button
+        class="chat__composer-button chat__composer-button--send"
+        type="submit"
+        [disabled]="!draft.trim() || isLoading()"
+        aria-label="Envoyer le message"
+      >
+        <svg
+          aria-hidden="true"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M22 2 15 22l-4-9-9-4L22 2Zm0 0L11 13"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    </form>
+    <p class="chat__disclaimer">Entrée pour envoyer · Maj+Entrée pour passer à la ligne.</p>
+  </main>
+</div>
